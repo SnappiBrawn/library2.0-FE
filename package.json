@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://snappibrawn.github.io/library2.0-FE/",
+  "homepage": "https://snappibrawn.github.io",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
