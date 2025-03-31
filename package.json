@@ -3,14 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://SnappiBrawn.github.io/library2.0-FE",
+  "homepage": "https://snappibrawn.github.io/library2.0-FE/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -C . -d build"
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@mantine/core": "^7.17.3",
