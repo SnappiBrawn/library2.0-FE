@@ -1,0 +1,26 @@
+.folder{
+    cursor: pointer;
+    background-color: orange;
+    filter: brightness(1);
+}
+
+.title{
+    text-transform: capitalize;
+}
+
+.folder:hover{
+    filter: brightness(0.9);
+}
+
+.folder:hover .title{
+    text-decoration: underline;
+}
+
+.icon{
+    position: absolute;
+    right: 0px;
+    top: -25px;
+    color: orange;
+    filter: brightness(0.9);
+    z-index: -1;
+}
