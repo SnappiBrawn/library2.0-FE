@@ -1,4 +1,7 @@
 .crumb{
+    text-transform: capitalize;
+}
+.underline{
     text-decoration: underline;
     cursor: pointer;
 }

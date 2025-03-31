@@ -9,7 +9,6 @@ import {IconFolderOpen} from '@tabler/icons-react';
 function Folder({name, items, navigate}) {
 
   const itemsCount = Object.keys(items).length
-  console.log(items);
   
   return (
     <Card className={classes.folder} p={10} width={50} withBorder onClick={() => navigate(name)}>

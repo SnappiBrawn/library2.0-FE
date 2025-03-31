@@ -15,7 +15,7 @@ function Breadcrumb({ crumbs, navigate }) {
   };
   const makeCrumb = (crumb) => {
     return (
-      <Title order={2} className={crumbs.indexOf(crumb) === crumbs.length - 1 ? "" : classes.crumb} onClick={() => goTo(crumb)}>
+      <Title order={2} className={[crumbs.indexOf(crumb) === crumbs.length - 1 ? "" : classes.underline, classes.crumb]} onClick={() => goTo(crumb)}>
         {crumb}
       </Title>
     );
