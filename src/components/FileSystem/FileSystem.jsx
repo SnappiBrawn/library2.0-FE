@@ -1,74 +1,90 @@
 import { Button, Group, Notification, SimpleGrid, Stack, Text, Title } from "@mantine/core";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Folder from "../Folder/Folder";
 import File from "../File/File";
 import Breadcrumb from "../Breadcrumb/Breadcrumb";
+import LazyLoader from "../LazyLoader/LazyLoader";
+
+const getFiles = async (folderId) => {
+  const response = await fetch("https://api-library.snaplogix.in/files/fetchFiles", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ folderId: folderId }),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  const data = await response.json();
+  return data;
+};
 
 function FileSystem({ searchParam }) {
-  const allData = useRef({});
-  const [fileData, setFileData] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [activeDirectory, setActiveDirectory] = useState(["Home"]);
-  const [filteredData, setFilteredData] = useState({});
+  const [fileData, setFileData] = useState(JSON.parse(localStorage.getItem("fileData")) || []);
+  const [lazyLoading, setLazyLoading] = useState(true);
+  const [activeDirectory, setActiveDirectory] = useState([{ name: "Home", link: "root" }]);
+  const [filteredData, setFilteredData] = useState([]);
 
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const response = await fetch("https://api-library.snaplogix.in/files/fetchall");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await getFiles("root");
+        localStorage.setItem("fileData", JSON.stringify(data));
         setFileData(data);
-        allData.current = data;
-        setLoading(false);
+        setLazyLoading(false);
       } catch (error) {
-        toast(error);
-        setLoading(false);
+        alert(error);
+        setLazyLoading(false);
       }
     };
-
-    fetchFiles();
+    if (localStorage.getItem("fileData") === null) fetchFiles();
+    else setLazyLoading(false);
   }, []);
 
   useEffect(() => {
-    if (searchParam.length > 2) {
-      const currentData = recursiveAccess(fileData, activeDirectory.slice(1));
-      const filtered = Object.entries(currentData).filter(([key, value]) => {
-        return key.toLowerCase().includes(searchParam.toLowerCase());
-      });
-      setFilteredData(Object.fromEntries(filtered));
-    } else {
-      setFilteredData(recursiveAccess(fileData, activeDirectory.slice(1)));
+    //ultra major final super duper effect before the states are set
+    function getSubFiles(obj, key) {
+      return fileData.filter((file) => file.parent === key.link);
     }
+    const currentData = getSubFiles(fileData, activeDirectory.at(-1));
+    let filtered = currentData.sort((a, b) => a.name.localeCompare(b.name)).sort((a, b) => (a.webContentLink ? 1 : 0) - (b.webContentLink ? 1 : 0));
+    if (searchParam.length > 2) {
+      filtered = currentData.filter((item) => {
+        return item.name.toLowerCase().includes(searchParam.toLowerCase());
+      });
+    }
+    setFilteredData(filtered);
   }, [searchParam, fileData, activeDirectory]);
 
-  const toast = (message) => {
-    return <Notification>{message}</Notification>;
+  useEffect(() => {
+    localStorage.setItem("fileData", JSON.stringify(fileData));
+  }, [fileData]);
+
+  const stepIn = async (directory, id) => {
+    const nextFiles = fileData.filter((file) => file.parent === id);
+    if (!nextFiles.length) {
+      setLazyLoading(true);
+      const data = await getFiles(id);
+      setLazyLoading(false);
+      localStorage.setItem("fileData", JSON.stringify([...fileData, ...data]));
+      setFileData([...fileData, ...data]);
+    }
+    setActiveDirectory([...activeDirectory, { name: directory, link: id }]);
   };
 
-  const stepIn = (directory) => {
-    setActiveDirectory([...activeDirectory, directory]);
+  const stepBack = () => {
+    if (activeDirectory.length !== 1) setActiveDirectory(activeDirectory.slice(0, activeDirectory.length - 1));
   };
-
-  const stepBack = ()=>{
-    if (activeDirectory.length !== 1)
-    setActiveDirectory(activeDirectory.slice(0, activeDirectory.length - 1));
-  }
-
-  function recursiveAccess(obj, keys) {
-    return keys.reduce((accumulator, key) => {
-      return accumulator && accumulator[key];
-    }, obj);
-  }
 
   const renderFiles = () => {
     const items = [];
-    Object.entries(filteredData).map(([key, value]) => {
-      if ("id" in value) {
-        items.push(<File name={key} size={value.size} link={value.webContentLink} />);
+    filteredData.map((item) => {
+      if (item.size >= 0) {
+        items.push(<File name={item.name} size={item.size} link={item.webContentLink} />);
       } else {
-        items.push(<Folder name={key} items={value} navigate={stepIn} />);
+        const itemsCount = fileData.filter((file) => file.parent === item.id).length;
+        items.push(<Folder name={item.name} navigate={stepIn} id={item.id} itemsCount={itemsCount} />);
       }
     });
     return items;
@@ -76,18 +92,32 @@ function FileSystem({ searchParam }) {
 
   return (
     <Stack>
+      {lazyLoading && <LazyLoader />}
       <Group justify="space-between">
         <Breadcrumb crumbs={activeDirectory} navigate={setActiveDirectory}></Breadcrumb>
         <Group gap={3}>
           <Button width={50} onClick={stepBack} color="red">
             Back
           </Button>
-          <Button width={50} onClick={() => document.location.reload()} loading={loading} color="green" loaderProps={{ type: "bars", color: "white" }}>
+          <Button
+            width={50}
+            onClick={async () => {
+              setLazyLoading(true);
+              const data = await getFiles(activeDirectory.at(-1).link);
+              const existingIds = new Set(fileData.map((file) => file.id));
+              const newData = data.filter((item) => !existingIds.has(item.id));
+              setFileData([...fileData, ...newData]);
+              setLazyLoading(false);
+            }}
+            loading={lazyLoading}
+            color="green"
+            loaderProps={{ type: "bars", color: "white" }}
+          >
             Refresh
           </Button>
         </Group>
       </Group>
-      {loading ? "Loading Files..." : <SimpleGrid cols={{ xs: 2, sm: 3, md: 4, lg: 5 }}>{renderFiles()}</SimpleGrid>}
+      {!lazyLoading && <SimpleGrid cols={{ xs: 2, sm: 3, md: 4, lg: 5 }}>{renderFiles()}</SimpleGrid>}
     </Stack>
   );
 }
